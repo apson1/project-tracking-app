@@ -1,0 +1,645 @@
+<div *ngIf="loading && !project" class="text-center" style="padding: 100px;">
+  <div style="font-size: 18px; color: var(--text-secondary);">Loading project details database...</div>
+</div>
+
+<div *ngIf="project">
+  <!-- PROJECT DETAIL HEADER -->
+  <div class="page-header" style="align-items: flex-start; margin-bottom: 24px;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <h1 class="page-title">{{ project.projectTitle }}</h1>
+        <span class="badge" [ngClass]="{
+          'badge-success': project.status === 'Active',
+          'badge-warning': project.status === 'Upcoming',
+          'badge-danger': project.status === 'Completed'
+        }">{{ project.status }}</span>
+      </div>
+      <div class="page-subtitle" style="display: flex; gap: 16px; margin-top: 8px;">
+        <span style="display: flex; align-items: center; gap: 4px;">
+          <span class="material-symbols-outlined" style="font-size: 16px;">key</span>
+          {{ project.projectID }}
+        </span>
+        <span style="display: flex; align-items: center; gap: 4px;">
+          <span class="material-symbols-outlined" style="font-size: 16px;">location_on</span>
+          {{ project.countryName }}, {{ project.cityName }}
+        </span>
+        <span style="display: flex; align-items: center; gap: 4px;">
+          <span class="material-symbols-outlined" style="font-size: 16px;">calendar_month</span>
+          {{ project.startDate | date:'mediumDate' }} - {{ project.endDate | date:'mediumDate' }}
+        </span>
+      </div>
+    </div>
+    
+    <a routerLink="/projects" class="btn btn-secondary">
+      <span class="material-symbols-outlined">arrow_back</span>
+      Back to List
+    </a>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tabs-container">
+    <button class="tab-btn" [ngClass]="{'active': activeTab === 'overview'}" (click)="selectTab('overview')">Overview & Finance</button>
+    <button class="tab-btn" [ngClass]="{'active': activeTab === 'participants'}" (click)="selectTab('participants')">Participants ({{ project.participants.length }})</button>
+    <button class="tab-btn" [ngClass]="{'active': activeTab === 'patients'}" (click)="selectTab('patients')">Patient Interventions ({{ project.patients.length }})</button>
+    <button class="tab-btn" [ngClass]="{'active': activeTab === 'dms'}" (click)="selectTab('dms')">Donations & DMS ({{ project.dmsOutputs.length }})</button>
+    <button class="tab-btn" [ngClass]="{'active': activeTab === 'targets'}" (click)="selectTab('targets')">KPIs & Targets</button>
+  </div>
+
+  <!-- TAB CONTENTS -->
+  
+  <!-- TAB 1: OVERVIEW -->
+  <div class="card" *ngIf="activeTab === 'overview'">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+      <div>
+        <h3 style="font-size: 18px; margin-bottom: 16px; border-bottom: 1px solid var(--border-light); padding-bottom: 8px;">General Information</h3>
+        <table class="custom-table" style="font-size: 14px;">
+          <tbody>
+            <tr>
+              <td style="color: var(--text-secondary); width: 40%; font-weight: 500;">French Project Name</td>
+              <td>{{ project.frenchProjectName || 'N/A' }}</td>
+            </tr>
+            <tr>
+              <td style="color: var(--text-secondary); font-weight: 500;">Program Line</td>
+              <td>{{ project.programName || 'N/A' }}</td>
+            </tr>
+            <tr>
+              <td style="color: var(--text-secondary); font-weight: 500;">Project Type</td>
+              <td>{{ project.projectTypeName || 'N/A' }}</td>
+            </tr>
+            <tr>
+              <td style="color: var(--text-secondary); font-weight: 500;">Target Participant Type</td>
+              <td>{{ project.participantTypeName || 'N/A' }}</td>
+            </tr>
+            <tr>
+              <td style="color: var(--text-secondary); font-weight: 500;">Instruction Days</td>
+              <td>{{ project.instructionDays }} days</td>
+            </tr>
+            <tr>
+              <td style="color: var(--text-secondary); font-weight: 500;">Ship Platform</td>
+              <td>{{ project.shipName || 'N/A' }}</td>
+            </tr>
+            <tr>
+              <td style="color: var(--text-secondary); font-weight: 500;">Field Service Phase</td>
+              <td>{{ project.preShipPost }}</td>
+            </tr>
+            <tr>
+              <td style="color: var(--text-secondary); font-weight: 500;">Specific Venue</td>
+              <td>{{ project.venue || 'N/A' }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top: 24px;">
+          <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 8px;">Comments & Notes</h4>
+          <p style="background-color: var(--bg-surface-elevated); padding: 16px; border-radius: 10px; font-size: 14px; border: 1px solid var(--border-light); color: var(--text-primary);">
+            {{ project.projectComments || 'No comments logged for this project.' }}
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="font-size: 18px; margin-bottom: 16px; border-bottom: 1px solid var(--border-light); padding-bottom: 8px;">Finance Code Mappings</h3>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">Enforced coding structure to map project outputs directly into General Ledger categories.</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <!-- Finance Location -->
+          <div style="background-color: var(--bg-surface-elevated); padding: 16px; border-radius: 12px; border: 1px solid var(--border-light);">
+            <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600;">FINANCE LOCATION CODE</div>
+            <div style="font-size: 18px; font-weight: 700; color: var(--accent-cyan); margin-top: 4px;" *ngIf="project.financeLocation">
+              {{ project.financeLocation.code }}
+            </div>
+            <div style="font-size: 13px; color: var(--text-primary); margin-top: 4px;" *ngIf="project.financeLocation">
+              {{ project.financeLocation.description }}
+            </div>
+            <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;" *ngIf="!project.financeLocation">
+              No Location Code mapped.
+            </div>
+          </div>
+
+          <!-- Finance Program -->
+          <div style="background-color: var(--bg-surface-elevated); padding: 16px; border-radius: 12px; border: 1px solid var(--border-light);">
+            <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600;">FINANCE PROGRAM CODE</div>
+            <div style="font-size: 18px; font-weight: 700; color: var(--primary); margin-top: 4px;" *ngIf="project.financeProgram">
+              {{ project.financeProgram.code }}
+            </div>
+            <div style="font-size: 13px; color: var(--text-primary); margin-top: 4px;" *ngIf="project.financeProgram">
+              {{ project.financeProgram.description }}
+            </div>
+            <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;" *ngIf="!project.financeProgram">
+              No Program Code mapped.
+            </div>
+          </div>
+
+          <!-- Finance Purpose -->
+          <div style="background-color: var(--bg-surface-elevated); padding: 16px; border-radius: 12px; border: 1px solid var(--border-light);">
+            <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600;">FINANCE PURPOSE CODE</div>
+            <div style="font-size: 18px; font-weight: 700; color: var(--accent-purple); margin-top: 4px;" *ngIf="project.financePurpose">
+              {{ project.financePurpose.code }}
+            </div>
+            <div style="font-size: 13px; color: var(--text-primary); margin-top: 4px;" *ngIf="project.financePurpose">
+              {{ project.financePurpose.description }}
+            </div>
+            <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;" *ngIf="!project.financePurpose">
+              No Purpose Code mapped.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: PARTICIPANTS -->
+  <div class="card" *ngIf="activeTab === 'participants'">
+    <div class="flex justify-between items-center mb-4">
+      <h3 style="font-size: 18px;">Attending Trainees & Mentees</h3>
+      <button *ngIf="authService.hasWriteAccess()" class="btn btn-primary" (click)="openParticipantModal()">
+        <span class="material-symbols-outlined">add</span>
+        Record Attendance
+      </button>
+    </div>
+
+    <div class="table-container">
+      <table class="custom-table" *ngIf="project.participants.length > 0">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Full Name</th>
+            <th>Period</th>
+            <th>Type of Output</th>
+            <th>Hours/Sessions</th>
+            <th>Reporting Date</th>
+            <th>Comments</th>
+            <th class="text-right" *ngIf="authService.hasWriteAccess()">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let part of project.participants">
+            <td style="font-weight: 600;">{{ part.participantCode }}</td>
+            <td>
+              <a [routerLink]="['/participants', part.participantIDNumber]" style="font-weight: 600;">
+                {{ part.fullName }}
+              </a>
+            </td>
+            <td>{{ part.reportingPeriod }}</td>
+            <td>
+              <div>{{ part.outputType }}</div>
+              <div style="font-size: 11px; color: var(--text-secondary);" *ngIf="part.specificOutputType">{{ part.specificOutputType }}</div>
+            </td>
+            <td style="font-weight: 700; color: var(--primary);">{{ part.outputAmount }}</td>
+            <td>{{ part.reportingDate | date:'mediumDate' }}</td>
+            <td>{{ part.comments }}</td>
+            <td class="text-right" *ngIf="authService.hasWriteAccess()">
+              <button class="btn btn-danger btn-sm" (click)="deleteParticipantOutput(part.projectParticipantOutputID)">
+                <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div *ngIf="project.participants.length === 0" style="padding: 40px; text-align: center; color: var(--text-muted);">
+        No participants are registered to attend this project yet. Click "Record Attendance" above to register one.
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: PATIENTS -->
+  <div class="card" *ngIf="activeTab === 'patients'">
+    <div class="flex justify-between items-center mb-4">
+      <h3 style="font-size: 18px;">Patient Medical Interventions & Surgeries</h3>
+      <button *ngIf="authService.hasWriteAccess()" class="btn btn-primary" (click)="openPatientModal()">
+        <span class="material-symbols-outlined">add</span>
+        Record Patient Output
+      </button>
+    </div>
+
+    <div class="table-container">
+      <table class="custom-table" *ngIf="project.patients.length > 0">
+        <thead>
+          <tr>
+            <th>Patient ID</th>
+            <th>Sex</th>
+            <th>Age Group</th>
+            <th>Residence Region</th>
+            <th>Reporting Date</th>
+            <th>Output Type</th>
+            <th>Surgeries / Amount</th>
+            <th>Comments</th>
+            <th class="text-right" *ngIf="authService.hasWriteAccess()">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let pat of project.patients">
+            <td style="font-weight: 600; color: var(--text-primary);">{{ pat.patientID }}</td>
+            <td>{{ pat.sex }}</td>
+            <td>{{ pat.ageGroup }}</td>
+            <td>{{ pat.residenceRegion }}, {{ pat.residenceCountry }}</td>
+            <td>{{ pat.reportingDate | date:'mediumDate' }}</td>
+            <td style="font-weight: 500;">{{ pat.outputType }}</td>
+            <td style="font-weight: 700; color: var(--success);">{{ pat.outputAmount }}</td>
+            <td>{{ pat.comments }}</td>
+            <td class="text-right" *ngIf="authService.hasWriteAccess()">
+              <button class="btn btn-danger btn-sm" (click)="deletePatientOutput(pat.patientOutputID)">
+                <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div *ngIf="project.patients.length === 0" style="padding: 40px; text-align: center; color: var(--text-muted);">
+        No medical patient interventions recorded for this project yet.
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: DMS / DONATIONS -->
+  <div class="card" *ngIf="activeTab === 'dms'">
+    <div class="flex justify-between items-center mb-4">
+      <h3 style="font-size: 18px;">DMS, Infrastructure, & Donations</h3>
+      <button *ngIf="authService.hasWriteAccess()" class="btn btn-primary" (click)="openDmsModal()">
+        <span class="material-symbols-outlined">add</span>
+        Record DMS Output
+      </button>
+    </div>
+
+    <div class="table-container">
+      <table class="custom-table" *ngIf="project.dmsOutputs.length > 0">
+        <thead>
+          <tr>
+            <th>Output Type</th>
+            <th>Amount</th>
+            <th>Date</th>
+            <th>Demographics</th>
+            <th>Program Segment</th>
+            <th>Comments</th>
+            <th class="text-right" *ngIf="authService.hasWriteAccess()">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let dms of project.dmsOutputs">
+            <td>
+              <div style="font-weight: 600;">{{ dms.outputType }}</div>
+              <div style="font-size: 11px; color: var(--text-secondary);" *ngIf="dms.specificOutputType">{{ dms.specificOutputType }}</div>
+            </td>
+            <td style="font-weight: 700; color: var(--accent-purple);">{{ dms.outputAmount | number }}</td>
+            <td>{{ dms.reportingDate | date:'mediumDate' }} ({{ dms.reportingPeriod }})</td>
+            <td>{{ dms.adultChild }} / {{ dms.gender }}</td>
+            <td>{{ dms.programTypeOfOutput }}</td>
+            <td>{{ dms.comments }}</td>
+            <td class="text-right" *ngIf="authService.hasWriteAccess()">
+              <button class="btn btn-danger btn-sm" (click)="deleteDmsOutput(dms.dmsInfrastructureOutputID)">
+                <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div *ngIf="project.dmsOutputs.length === 0" style="padding: 40px; text-align: center; color: var(--text-muted);">
+        No non-participant/donation infrastructure records logged yet.
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 5: TARGETS (KPIs) -->
+  <div class="card" *ngIf="activeTab === 'targets'">
+    <!-- PLANNED VS ACTUAL METRICS BAR GRAPH -->
+    <h3 style="font-size: 18px; margin-bottom: 20px;">KPI Tracking - Planned Targets vs Actual Outcomes</h3>
+    
+    <div *ngIf="project.plannedActualStats.length > 0" style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 40px;">
+      <div *ngFor="let stat of project.plannedActualStats" style="background-color: var(--bg-surface-elevated); padding: 20px; border-radius: 12px; border: 1px solid var(--border-light);">
+        <div class="flex justify-between items-center mb-2">
+          <div>
+            <span style="font-weight: 600; font-size: 15px; color: var(--text-primary);">{{ stat.typeName }}</span>
+            <span class="badge badge-info" style="margin-left: 8px;">{{ stat.category }}</span>
+          </div>
+          <div style="font-weight: 700; font-size: 14px;">
+            <span style="color: var(--primary);">{{ stat.actual | number }}</span>
+            <span style="color: var(--text-muted);"> / {{ stat.planned | number }} planned</span>
+            <span style="color: var(--success); margin-left: 12px;">({{ stat.percentage | number:'1.0-1' }}%)</span>
+          </div>
+        </div>
+        
+        <!-- Progress bar wrapper -->
+        <div style="width: 100%; height: 8px; background-color: var(--bg-base); border-radius: 9999px; overflow: hidden;">
+          <div [style.width.%]="Math.min(stat.percentage, 100)" style="height: 100%; background: linear-gradient(90deg, var(--primary) 0%, var(--success) 100%); border-radius: 9999px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RAW TARGETS CHECKLIST -->
+    <div class="flex justify-between items-center mb-4">
+      <h3 style="font-size: 18px;">Target Configurations</h3>
+      <button *ngIf="authService.hasWriteAccess()" class="btn btn-primary" (click)="openTargetModal()">
+        <span class="material-symbols-outlined">add</span>
+        Set Target
+      </button>
+    </div>
+
+    <div class="table-container">
+      <table class="custom-table" *ngIf="project.plannedRaw.length > 0">
+        <thead>
+          <tr>
+            <th>KPI Indicator</th>
+            <th>Category</th>
+            <th>Target Amount</th>
+            <th>Planned Period / Year</th>
+            <th>Comments</th>
+            <th class="text-right" *ngIf="authService.hasWriteAccess()">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let tgt of project.plannedRaw">
+            <td style="font-weight: 600;">{{ tgt.output }}</td>
+            <td>
+              <span class="badge badge-info">{{ tgt.category }}</span>
+            </td>
+            <td style="font-weight: 700; color: var(--success);">{{ tgt.plannedAmount | number }}</td>
+            <td>{{ tgt.reportingPeriod }} ({{ tgt.plannedDateYear }})</td>
+            <td>{{ tgt.comments }}</td>
+            <td class="text-right" *ngIf="authService.hasWriteAccess()">
+              <button class="btn btn-danger btn-sm" (click)="deleteTarget(tgt.plannedOutputID)">
+                <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div *ngIf="project.plannedRaw.length === 0" style="padding: 40px; text-align: center; color: var(--text-muted);">
+        No KPI targets configured for this project yet. Add one to activate progress comparison tracking!
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================================
+     MODALS OVERLAYS SECTION
+     ========================================================== -->
+
+<!-- 1. RECORD ATTENDANCE MODAL -->
+<div class="modal-overlay" *ngIf="showParticipantModal">
+  <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-header">
+      <h2 style="font-size: 18px;">Record Participant Attendance</h2>
+      <button class="btn btn-secondary btn-sm" style="border: none; background: none;" (click)="showParticipantModal = false">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Trainee / Participant *</label>
+        <select class="form-control" [(ngModel)]="participantForm.participantIDNumber">
+          <option value="">Select Registered Person</option>
+          <option *ngFor="let p of allParticipants" [value]="p.participantIDNumber">{{ p.lastName }}, {{ p.firstName }} ({{ p.participantID }} - {{ p.professionTitle }})</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Output Indicator Type *</label>
+          <select class="form-control" [(ngModel)]="participantForm.outputTypeID" (change)="onParticipantOutputTypeChange()">
+            <option value="">Select Type</option>
+            <option *ngFor="let ot of getFilteredOutputTypes('Participant')" [value]="ot.outputTypeID">{{ ot.typeName }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Specific Output Sub-Type</label>
+          <select class="form-control" [(ngModel)]="participantForm.specificOutputTypeID" [disabled]="!participantForm.outputTypeID">
+            <option value="">Select Specific Type</option>
+            <option *ngFor="let s of filteredSpecificOutputs" [value]="s.specificOutputTypeID">{{ s.specificTypeName }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Amount (Hours/Days/Count) *</label>
+          <input type="number" class="form-control" [(ngModel)]="participantForm.outputAmount">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reporting Period</label>
+          <input type="text" class="form-control" placeholder="e.g. Q1 2026, May 2026" [(ngModel)]="participantForm.reportingPeriod">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date Logged</label>
+          <input type="date" class="form-control" [(ngModel)]="participantForm.reportingDate">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Activity Comments</label>
+        <input type="text" class="form-control" placeholder="Comments..." [(ngModel)]="participantForm.comments">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showParticipantModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="saveParticipantOutput()">Record Entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- 2. RECORD PATIENT INTERVENTION MODAL -->
+<div class="modal-overlay" *ngIf="showPatientModal">
+  <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-header">
+      <h2 style="font-size: 18px;">Record Patient Medical Outcome</h2>
+      <button class="btn btn-secondary btn-sm" style="border: none; background: none;" (click)="showPatientModal = false">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Anonymized Patient ID *</label>
+          <input type="text" class="form-control" [(ngModel)]="patientForm.patientID">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sex</label>
+          <select class="form-control" [(ngModel)]="patientForm.sex">
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Age Group</label>
+          <select class="form-control" [(ngModel)]="patientForm.ageGroup">
+            <option value="0-5">0-5 Children</option>
+            <option value="6-12">6-12 Children</option>
+            <option value="13-17">13-17 Youth</option>
+            <option value="18-59">18-59 Adults</option>
+            <option value="60+">60+ Elderly</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Intervention Type *</label>
+          <select class="form-control" [(ngModel)]="patientForm.outputTypeID">
+            <option value="">Select Procedure</option>
+            <option *ngFor="let ot of getFilteredOutputTypes('Patient')" [value]="ot.outputTypeID">{{ ot.typeName }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Quantity</label>
+          <input type="number" class="form-control" [(ngModel)]="patientForm.outputAmount">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Residence Country</label>
+          <select class="form-control" [(ngModel)]="patientForm.countryID" (change)="onPatientCountryChange()">
+            <option value="">Select Country</option>
+            <option *ngFor="let c of references.countries" [value]="c.countryID">{{ c.countryName }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Residence Region</label>
+          <select class="form-control" [(ngModel)]="patientForm.cityID" [disabled]="!patientForm.countryID">
+            <option value="">Select Region</option>
+            <option *ngFor="let ct of filteredCities" [value]="ct.cityID">{{ ct.cityName }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date of Surgery</label>
+          <input type="date" class="form-control" [(ngModel)]="patientForm.reportingDate">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Patient Comments</label>
+        <input type="text" class="form-control" placeholder="Comments..." [(ngModel)]="patientForm.comments">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showPatientModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="savePatientOutput()">Record Surgery</button>
+    </div>
+  </div>
+</div>
+
+<!-- 3. RECORD DMS OUTPUT MODAL -->
+<div class="modal-overlay" *ngIf="showDmsModal">
+  <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-header">
+      <h2 style="font-size: 18px;">Record Donation / DMS Output</h2>
+      <button class="btn btn-secondary btn-sm" style="border: none; background: none;" (click)="showDmsModal = false">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Donation Output Type *</label>
+          <select class="form-control" [(ngModel)]="dmsForm.outputTypeID" (change)="onDmsOutputTypeChange()">
+            <option value="">Select Output Type</option>
+            <option *ngFor="let ot of getFilteredOutputTypes('DMS')" [value]="ot.outputTypeID">{{ ot.typeName }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Specific Donation Category</label>
+          <select class="form-control" [(ngModel)]="dmsForm.specificOutputTypeID" [disabled]="!dmsForm.outputTypeID">
+            <option value="">Select Specific Type</option>
+            <option *ngFor="let s of filteredSpecificOutputs" [value]="s.specificOutputTypeID">{{ s.specificTypeName }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Output Quantity *</label>
+          <input type="number" class="form-control" [(ngModel)]="dmsForm.outputAmount">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reporting Period</label>
+          <input type="text" class="form-control" placeholder="e.g. May 2026" [(ngModel)]="dmsForm.reportingPeriod">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date Logged</label>
+          <input type="date" class="form-control" [(ngModel)]="dmsForm.reportingDate">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Demographics Target</label>
+          <select class="form-control" [(ngModel)]="dmsForm.adultChild">
+            <option value="Both">General</option>
+            <option value="Adult">Adults Only</option>
+            <option value="Child">Children Only</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gender Segment</label>
+          <select class="form-control" [(ngModel)]="dmsForm.gender">
+            <option value="Both">Co-ed</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Program Unit segment</label>
+          <input type="text" class="form-control" placeholder="e.g. Advocacy, Donation" [(ngModel)]="dmsForm.programTypeOfOutput">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Distribution Comments</label>
+        <input type="text" class="form-control" placeholder="Description of infrastructure/donation..." [(ngModel)]="dmsForm.comments">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showDmsModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="saveDmsOutput()">Record Donation</button>
+    </div>
+  </div>
+</div>
+
+<!-- 4. ADD KPI TARGET MODAL -->
+<div class="modal-overlay" *ngIf="showTargetModal">
+  <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-header">
+      <h2 style="font-size: 18px;">Add Planned Target KPI</h2>
+      <button class="btn btn-secondary btn-sm" style="border: none; background: none;" (click)="showTargetModal = false">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Target Metric Indicator *</label>
+        <select class="form-control" [(ngModel)]="targetForm.plannedOutputTypeID">
+          <option value="">Select Metric Indicator</option>
+          <option *ngFor="let ot of references.outputTypes" [value]="ot.outputTypeID">{{ ot.typeName }} ({{ ot.category }})</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Target Planned Amount *</label>
+          <input type="number" class="form-control" [(ngModel)]="targetForm.plannedAmount">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target Period</label>
+          <input type="text" class="form-control" placeholder="e.g. Full project timeline, Q1" [(ngModel)]="targetForm.reportingPeriod">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target Year</label>
+          <input type="text" class="form-control" placeholder="Year" [(ngModel)]="targetForm.plannedDateYear">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Planned Details / KPI rationale</label>
+        <input type="text" class="form-control" placeholder="Rationale..." [(ngModel)]="targetForm.comments">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showTargetModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="saveTarget()">Create KPI Goal</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,145 @@
+<div class="page-header" style="margin-bottom: 24px;">
+  <h1 class="page-title" style="font-size: 24px;">Dashboard</h1>
+  <div style="display: flex; gap: 12px;">
+    <button (click)="navigateToAddOutput()" class="btn btn-primary" style="background: var(--primary); box-shadow: none; padding: 8px 16px;">
+      <span class="material-symbols-outlined" style="font-size: 18px;">add</span> Add Output
+    </button>
+    <button (click)="generatePdf()" class="btn" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); color: var(--text-primary); padding: 8px 16px;">
+      Generate PDF
+    </button>
+  </div>
+</div>
+
+<div *ngIf="loading" class="text-center" style="padding: 100px;">
+  <div style="font-size: 18px; color: var(--text-secondary);">Loading metrics...</div>
+</div>
+
+<div *ngIf="!loading">
+  <!-- KPIs GRID -->
+  <div class="metrics-grid" style="grid-template-columns: repeat(5, 1fr); gap: 16px;">
+    
+    <!-- Card 1: Total Projects -->
+    <div class="card metric-card" style="padding: 16px 20px;">
+      <div class="metric-header" style="color: var(--primary); font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">
+        TOTAL PROJECTS
+        <span class="material-symbols-outlined" style="font-size: 16px;">library_books</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 8px;">
+        <div class="metric-value" style="font-size: 32px;">{{ kpis?.totalProjects || 0 }}</div>
+        <div style="color: var(--text-muted); font-size: 11px;">+4 this month</div>
+      </div>
+    </div>
+
+    <!-- Card 2: Active Projects -->
+    <div class="card metric-card" style="padding: 16px 20px;">
+      <div class="metric-header" style="color: var(--success); font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">
+        ACTIVE PROJECTS
+        <span class="material-symbols-outlined" style="font-size: 16px;">show_chart</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 8px;">
+        <div class="metric-value" style="font-size: 32px;">{{ kpis?.activeProjects || 0 }}</div>
+        <div style="color: var(--text-muted); font-size: 11px;">Running now</div>
+      </div>
+    </div>
+
+    <!-- Card 3: Total Participants -->
+    <div class="card metric-card" style="padding: 16px 20px;">
+      <div class="metric-header" style="color: var(--accent-cyan); font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">
+        TOTAL PARTICIPANTS
+        <span class="material-symbols-outlined" style="font-size: 16px;">groups</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 8px;">
+        <div class="metric-value" style="font-size: 32px;">{{ (kpis?.totalParticipants || 0) | number }}</div>
+        <div style="color: var(--text-muted); font-size: 11px;">Enrolled</div>
+      </div>
+    </div>
+
+    <!-- Card 4: Patient Outputs -->
+    <div class="card metric-card" style="padding: 16px 20px;">
+      <div class="metric-header" style="color: var(--text-secondary); font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">
+        PATIENT OUTPUTS
+        <span class="material-symbols-outlined" style="font-size: 16px;">favorite_border</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 8px;">
+        <div class="metric-value" style="font-size: 32px;">{{ (kpis?.totalPatientOutputs || 0) | number }}</div>
+        <div style="color: var(--text-muted); font-size: 11px;">Total amount</div>
+      </div>
+    </div>
+
+    <!-- Card 5: Missing Data -->
+    <div class="card metric-card" style="padding: 16px 20px; border: 1px solid rgba(245, 158, 11, 0.3); background-color: rgba(245, 158, 11, 0.02);">
+      <div class="metric-header" style="color: var(--warning); font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">
+        DATA WARNINGS
+        <span class="material-symbols-outlined" style="font-size: 16px;">error_outline</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; margin-top: 4px;">
+        <div class="metric-value" style="font-size: 28px;">{{ warnings.length || 0 }}</div>
+        <div style="color: var(--warning); font-size: 11px; line-height: 1.2;">Records require<br>attention</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MAIN DASHBOARD GRID -->
+  <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 32px;">
+    
+    <!-- Left Column: Chart -->
+    <div class="card" style="height: 500px; display: flex; flex-direction: column;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h3 style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--text-primary); text-transform: uppercase;">
+          {{ currentChartType === 'year' ? 'Patient Outputs By Year' : currentChartType === 'country' ? 'Outputs By Country' : 'Outputs By Program (Breakdown)' }}
+        </h3>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button (click)="switchChart('year')" [style.background-color]="currentChartType === 'year' ? 'var(--primary)' : 'rgba(255,255,255,0.15)'" style="width: 10px; height: 10px; border-radius: 50%; border: none; cursor: pointer; padding: 0; transition: background-color 0.2s; outline: none;" title="Outputs by Year"></button>
+          <button (click)="switchChart('country')" [style.background-color]="currentChartType === 'country' ? 'var(--primary)' : 'rgba(255,255,255,0.15)'" style="width: 10px; height: 10px; border-radius: 50%; border: none; cursor: pointer; padding: 0; transition: background-color 0.2s; outline: none;" title="Outputs by Country"></button>
+          <button (click)="switchChart('program')" [style.background-color]="currentChartType === 'program' ? 'var(--primary)' : 'rgba(255,255,255,0.15)'" style="width: 10px; height: 10px; border-radius: 50%; border: none; cursor: pointer; padding: 0; transition: background-color 0.2s; outline: none;" title="Outputs by Program"></button>
+        </div>
+      </div>
+      <div style="flex-grow: 1; position: relative;">
+        <canvas id="monthChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Right Column: Programs & Upcoming -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+      
+      <!-- Outputs by Program -->
+      <div class="card" style="flex: 1;">
+        <h3 style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--text-primary); text-transform: uppercase; margin-bottom: 24px;">Outputs By Program</h3>
+        
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div *ngFor="let prog of programOutputs">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">
+              <span>{{ prog.name }}</span>
+              <span>{{ prog.percent }}%</span>
+            </div>
+            <div style="height: 6px; background-color: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+              <div [style.width.%]="prog.percent" [style.background-color]="prog.color" style="height: 100%; border-radius: 3px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming Projects -->
+      <div class="card" style="flex: 1;">
+        <h3 style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--text-primary); text-transform: uppercase; margin-bottom: 20px;">Upcoming Projects</h3>
+        
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+          <div *ngIf="upcomingProjects.length === 0" style="color: var(--text-muted); font-size: 13px; font-style: italic;">
+            No upcoming projects scheduled.
+          </div>
+          <div class="upcoming-item" *ngFor="let proj of upcomingProjects">
+            <div class="upcoming-icon">
+              <span class="material-symbols-outlined">schedule</span>
+            </div>
+            <div>
+              <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">{{ proj.projectTitle }}</div>
+              <div style="font-size: 11px; color: var(--text-secondary);">Starts {{ proj.startDate | date }} &bull; {{ proj.countryName }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

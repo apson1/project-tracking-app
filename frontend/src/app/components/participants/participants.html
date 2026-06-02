@@ -1,0 +1,313 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Participants & Trainees</h1>
+    <div class="page-subtitle">Manage medical personnel, surgical shadows, clinical nurses, and capacity-building trainees.</div>
+  </div>
+  <button *ngIf="authService.hasWriteAccess()" class="btn btn-primary" (click)="openCreateModal()">
+    <span class="material-symbols-outlined">person_add</span>
+    Register Participant
+  </button>
+</div>
+
+<!-- FILTERS SECTION -->
+<div class="card mb-4">
+  <div class="form-row">
+    <!-- Search keyword -->
+    <div class="form-group">
+      <label class="form-label">Search Name / ID / Email</label>
+      <input type="text" class="form-control" placeholder="Search keywords..." [(ngModel)]="filters.search" (keyup.enter)="applyFilters()">
+    </div>
+
+    <!-- Country -->
+    <div class="form-group">
+      <label class="form-label">Country</label>
+      <select class="form-control" [(ngModel)]="filters.countryId" (change)="applyFilters()">
+        <option value="">All Countries</option>
+        <option *ngFor="let c of references.countries" [value]="c.countryID">{{ c.countryName }}</option>
+      </select>
+    </div>
+
+    <!-- Institution -->
+    <div class="form-group">
+      <label class="form-label">Hospital / Institution</label>
+      <select class="form-control" [(ngModel)]="filters.institutionId" (change)="applyFilters()">
+        <option value="">All Institutions</option>
+        <option *ngFor="let inst of references.institutions" [value]="inst.institutionID">{{ inst.institutionName }}</option>
+      </select>
+    </div>
+
+    <!-- Profession -->
+    <div class="form-group">
+      <label class="form-label">Profession / Role</label>
+      <input type="text" class="form-control" placeholder="e.g. Surgeon, Nurse" [(ngModel)]="filters.profession" (keyup.enter)="applyFilters()">
+    </div>
+
+    <!-- Filter Buttons -->
+    <div class="form-group" style="display: flex; align-items: flex-end; gap: 8px;">
+      <button class="btn btn-secondary" style="flex-grow: 1;" (click)="applyFilters()">Search</button>
+      <button class="btn btn-secondary" style="background: none; border: 1px dashed var(--border-medium);" (click)="clearFilters()" title="Reset Filters">
+        <span class="material-symbols-outlined" style="vertical-align: middle;">restart_alt</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- PARTICIPANTS LIST -->
+<div class="card">
+  <div *ngIf="loading && participants.length === 0" class="text-center" style="padding: 40px;">
+    Loading participants database...
+  </div>
+  
+  <div *ngIf="!loading && participants.length === 0" class="text-center" style="padding: 40px; color: var(--text-muted);">
+    No participants found matching the filters.
+  </div>
+
+  <div class="table-container" *ngIf="participants.length > 0">
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <th>Participant ID</th>
+          <th>Full Name</th>
+          <th>Gender</th>
+          <th>Profession / Title</th>
+          <th>Hospital / Facility</th>
+          <th>Country/Region</th>
+          <th>Contact</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of participants">
+          <td style="font-weight: 700; color: var(--text-primary);">{{ p.participantID }}</td>
+          <td>
+            <div style="font-weight: 600; cursor: pointer; color: var(--primary);" (click)="viewParticipantDetails(p)">
+              {{ p.title }} {{ p.firstName }} {{ p.lastName }}
+            </div>
+          </td>
+          <td>{{ p.gender }}</td>
+          <td style="font-weight: 500;">{{ p.professionTitle }}</td>
+          <td>{{ p.institutionName || 'N/A' }}</td>
+          <td>
+            <div>{{ p.countryName }}</div>
+            <div style="font-size: 12px; color: var(--text-muted);">{{ p.regionName }}</div>
+          </td>
+          <td>
+            <div style="font-size: 13px;">{{ p.email }}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">{{ p.mobilePhone }}</div>
+          </td>
+          <td class="text-right">
+            <div style="display: inline-flex; gap: 8px;">
+              <button class="btn btn-secondary btn-sm" (click)="viewParticipantDetails(p)" title="View profile/training history">
+                <span class="material-symbols-outlined" style="font-size: 16px;">contact_page</span>
+              </button>
+              <button *ngIf="authService.hasWriteAccess()" class="btn btn-secondary btn-sm" (click)="openEditModal(p)" title="Edit profile">
+                <span class="material-symbols-outlined" style="font-size: 16px;">edit</span>
+              </button>
+              <button *ngIf="authService.hasAdminAccess()" class="btn btn-danger btn-sm" (click)="deleteParticipant(p)" title="Delete participant">
+                <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- PAGINATION -->
+  <div class="flex justify-between items-center mt-4" *ngIf="participants.length > 0">
+    <div style="font-size: 13px; color: var(--text-secondary);">
+      Showing {{ (filters.page - 1) * filters.pageSize + 1 }} to {{ Math.min(filters.page * filters.pageSize, totalCount) }} of {{ totalCount }} participants
+    </div>
+    
+    <div class="flex gap-2">
+      <button class="btn btn-secondary btn-sm" [disabled]="filters.page === 1" (click)="changePage(filters.page - 1)">
+        Previous
+      </button>
+      <button *ngFor="let p of [].constructor(totalPages); let i = index" class="btn btn-secondary btn-sm" [ngClass]="{'btn-primary': filters.page === i + 1}" (click)="changePage(i + 1)">
+        {{ i + 1 }}
+      </button>
+      <button class="btn btn-secondary btn-sm" [disabled]="filters.page === totalPages" (click)="changePage(filters.page + 1)">
+        Next
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REGISTER / EDIT PARTICIPANT -->
+<div class="modal-overlay" *ngIf="showModal">
+  <div class="modal-content" style="max-width: 650px;">
+    <div class="modal-header">
+      <h2 style="font-size: 20px;">{{ modalTitle }}</h2>
+      <button class="btn btn-secondary btn-sm" style="border: none; background: none;" (click)="showModal = false">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Participant ID Code</label>
+          <input type="text" class="form-control" placeholder="e.g. PAR-0001 (or auto-gen)" [(ngModel)]="participantForm.participantID">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Honorific Title</label>
+          <input type="text" class="form-control" placeholder="e.g. Dr, Mr, Sister" [(ngModel)]="participantForm.title">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">First Name *</label>
+          <input type="text" class="form-control" placeholder="First Name" [(ngModel)]="participantForm.firstName" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Last Name *</label>
+          <input type="text" class="form-control" placeholder="Last Name" [(ngModel)]="participantForm.lastName" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gender</label>
+          <select class="form-control" [(ngModel)]="participantForm.gender">
+            <option value="">Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Mobile Phone</label>
+          <input type="text" class="form-control" placeholder="Phone Number" [(ngModel)]="participantForm.mobilePhone">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-control" placeholder="email@address.org" [(ngModel)]="participantForm.email">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Profession / Specialization</label>
+          <input type="text" class="form-control" placeholder="e.g. Ophthalmic Nurse, General Surgeon" [(ngModel)]="participantForm.professionTitle">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hospital / Facility Facility</label>
+          <select class="form-control" [(ngModel)]="participantForm.institutionID">
+            <option value="">Select Institution</option>
+            <option *ngFor="let inst of references.institutions" [value]="inst.institutionID">{{ inst.institutionName }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Country of Origin</label>
+          <select class="form-control" [(ngModel)]="participantForm.countryID" (change)="onCountryChange()">
+            <option value="">Select Country</option>
+            <option *ngFor="let c of references.countries" [value]="c.countryID">{{ c.countryName }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Region / City</label>
+          <select class="form-control" [(ngModel)]="participantForm.cityID" [disabled]="!participantForm.countryID">
+            <option value="">Select Region</option>
+            <option *ngFor="let ct of filteredCities" [value]="ct.cityID">{{ ct.cityName }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Notes & Comments</label>
+        <textarea class="form-control" rows="3" placeholder="Additional bio details..." [(ngModel)]="participantForm.comments"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="saveParticipant()">Save Profile</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAILS OVERLAY MODAL (PARTICIPANT PROFILE VIEW) -->
+<div class="modal-overlay" *ngIf="showDetailsOverlay && selectedParticipant">
+  <div class="modal-content" style="max-width: 700px;">
+    <div class="modal-header">
+      <h2 style="font-size: 20px;">Trainee Profile Card</h2>
+      <button class="btn btn-secondary btn-sm" style="border: none; background: none;" (click)="showDetailsOverlay = false">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <!-- Profile Header Summary -->
+      <div style="display: flex; gap: 20px; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 20px; margin-bottom: 20px;">
+        <div style="width: 70px; height: 70px; border-radius: 50%; background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%); display: flex; align-items: center; justify-content: center;">
+          <span class="material-symbols-outlined" style="font-size: 36px; color: #fff;">person</span>
+        </div>
+        <div>
+          <h2 style="font-size: 22px;">{{ selectedParticipant.title }} {{ selectedParticipant.firstName }} {{ selectedParticipant.lastName }}</h2>
+          <div style="font-size: 14px; color: var(--text-secondary);">
+            {{ selectedParticipant.professionTitle }} &bull; {{ selectedParticipant.institutionName || 'N/A' }}
+          </div>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+            ID: {{ selectedParticipant.participantID }} &bull; Country: {{ selectedParticipant.countryName }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Metrics -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+        <div style="background-color: var(--bg-surface-elevated); padding: 16px; border-radius: 10px; text-align: center; border: 1px solid var(--border-light);">
+          <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600;">PROJECTS ATTENDED</div>
+          <div style="font-size: 28px; font-family: var(--font-display); font-weight: 700; color: var(--primary); margin-top: 4px;">
+            {{ selectedParticipant.totalProjectsAttended }}
+          </div>
+        </div>
+        <div style="background-color: var(--bg-surface-elevated); padding: 16px; border-radius: 10px; text-align: center; border: 1px solid var(--border-light);">
+          <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600;">COMPLETED TRAINING HOURS</div>
+          <div style="font-size: 28px; font-family: var(--font-display); font-weight: 700; color: var(--success); margin-top: 4px;">
+            {{ selectedParticipant.totalTrainingHours }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Projects Attended List -->
+      <h3 style="font-size: 16px; margin-bottom: 12px;">Instruction & Mentorship History</h3>
+      <div class="table-container" style="max-height: 250px; overflow-y: auto;">
+        <table class="custom-table" style="font-size: 13px;" *ngIf="selectedParticipant.attendedProjects.length > 0">
+          <thead>
+            <tr>
+              <th>Project ID</th>
+              <th>Project Title</th>
+              <th>Hours/Sessions</th>
+              <th>Indicator</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let ap of selectedParticipant.attendedProjects">
+              <td style="font-weight: 600; color: var(--text-primary);">{{ ap.projectCode }}</td>
+              <td>{{ ap.projectTitle }}</td>
+              <td style="font-weight: 700; color: var(--primary);">{{ ap.outputAmount }}</td>
+              <td>{{ ap.outputType }}</td>
+              <td>{{ ap.reportingDate | date:'mediumDate' }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div *ngIf="selectedParticipant.attendedProjects.length === 0" style="text-align: center; color: var(--text-muted); padding: 16px;">
+          No project attendances registered for this participant yet.
+        </div>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <h4 style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;">Trainee Notes</h4>
+        <p style="background-color: var(--bg-surface-elevated); padding: 12px; border-radius: 8px; font-size: 13px; color: var(--text-primary); border: 1px solid var(--border-light);">
+          {{ selectedParticipant.comments || 'No remarks recorded.' }}
+        </p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="openEditModal(selectedParticipant)">Edit Profile</button>
+      <button class="btn btn-primary" (click)="showDetailsOverlay = false">Close Profile</button>
+    </div>
+  </div>
+</div>

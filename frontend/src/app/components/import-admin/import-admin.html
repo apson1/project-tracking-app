@@ -1,0 +1,647 @@
+<div class="page-header" style="margin-bottom: 24px;">
+  <div>
+    <h1 class="page-title" style="font-size: 24px;">Import & Admin</h1>
+    <div class="page-subtitle" style="margin-top: 8px;">Batch upload data, manage reference drop downs, and oversee data quality.</div>
+  </div>
+</div>
+
+<!-- Access warning banner for non-admins -->
+<div *ngIf="!authService.isAdmin()" style="background-color: rgba(99, 102, 241, 0.05); border: 1px dashed rgba(99, 102, 241, 0.3); color: var(--text-secondary); padding: 16px; border-radius: 10px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; font-size: 13px;">
+  <span class="material-symbols-outlined" style="color: var(--primary); font-size: 24px;">info</span>
+  <div>
+    <strong>Read-Only View:</strong> You are viewing this page as <strong>{{ authService.currentUser().name }}</strong> ({{ authService.currentUser().roleName }}). Reference table additions, modifications, and batch file uploads require System Administrator privileges.
+  </div>
+</div>
+
+<!-- Tab bar switcher for Admin users -->
+<div class="tabs-container" style="margin-bottom: 24px; border-bottom: 1px solid var(--border-light); display: flex; gap: 8px;" *ngIf="authService.isAdmin()">
+  <button class="tab-btn" [ngClass]="{'active': activeTab === 'import'}" (click)="switchSubTab('import')" style="background: none; border: none; border-bottom: 2px solid transparent; padding: 12px 16px; color: var(--text-secondary); font-weight: 600; cursor: pointer; transition: all 0.2s;" [style.border-bottom-color]="activeTab === 'import' ? 'var(--primary)' : 'transparent'" [style.color]="activeTab === 'import' ? 'var(--text-primary)' : 'var(--text-secondary)'">
+    Data Import & Reference Tables
+  </button>
+  <button class="tab-btn" [ngClass]="{'active': activeTab === 'users'}" (click)="switchSubTab('users')" style="background: none; border: none; border-bottom: 2px solid transparent; padding: 12px 16px; color: var(--text-secondary); font-weight: 600; cursor: pointer; transition: all 0.2s;" [style.border-bottom-color]="activeTab === 'users' ? 'var(--primary)' : 'transparent'" [style.color]="activeTab === 'users' ? 'var(--text-primary)' : 'var(--text-secondary)'">
+    User Access Control
+  </button>
+</div>
+
+<div *ngIf="successMessage" style="background-color: var(--success-glow); border: 1px solid rgba(16, 185, 129, 0.2); color: var(--success); padding: 16px; border-radius: 10px; margin-bottom: 24px; display: flex; align-items: center; gap: 8px;">
+  <span class="material-symbols-outlined" style="font-size: 24px;">check_circle</span>
+  {{ successMessage }}
+</div>
+
+<div *ngIf="errorMessage" style="background-color: var(--danger-glow); border: 1px solid rgba(239, 68, 68, 0.2); color: var(--danger); padding: 16px; border-radius: 10px; margin-bottom: 24px; display: flex; align-items: center; gap: 8px;">
+  <span class="material-symbols-outlined" style="font-size: 24px;">error</span>
+  {{ errorMessage }}
+</div>
+
+<!-- DEFAULT OVERVIEW SCREEN -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 32px;" *ngIf="activeTab === 'import' && !isValidated && !isCommitted">
+  
+  <!-- LEFT COLUMN -->
+  <div style="display: flex; flex-direction: column; gap: 24px;">
+    
+    <!-- Upload Data Batch Card -->
+    <div class="card upload-card" [style.opacity]="authService.isAdmin() ? 1 : 0.6">
+      <input type="file" id="csvFileInput" accept=".csv" (change)="onFileSelected($event)" style="display: none;">
+      
+      <div class="upload-icon-container">
+        <span class="material-symbols-outlined" style="font-size: 32px;">cloud_upload</span>
+      </div>
+      
+      <h2 style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">Upload Data Batch</h2>
+      <p style="color: var(--text-secondary); max-width: 400px; line-height: 1.5; margin-bottom: 24px; font-size: 13px;">
+        Upload Excel (.xlsx) or CSV files containing project, participant, or output records.
+      </p>
+      
+      <div style="display: flex; gap: 16px; margin-bottom: 24px;">
+        <label style="font-size: 12px; display: flex; align-items: center; gap: 4px; color: var(--text-secondary); cursor: pointer;">
+          <input type="radio" name="importType" value="Projects" [(ngModel)]="importType" [disabled]="!authService.isAdmin()"> Projects Table
+        </label>
+        <label style="font-size: 12px; display: flex; align-items: center; gap: 4px; color: var(--text-secondary); cursor: pointer;">
+          <input type="radio" name="importType" value="Participants" [(ngModel)]="importType" [disabled]="!authService.isAdmin()"> Participants Table
+        </label>
+      </div>
+      
+      <div style="display: flex; gap: 12px;">
+        <button class="btn btn-primary" style="background-color: var(--primary); border: none; padding: 10px 24px; font-weight: 500;" onclick="document.getElementById('csvFileInput').click()" [disabled]="loading || !authService.isAdmin()">
+          <span class="material-symbols-outlined" *ngIf="loading" style="animation: spin 1.5s linear infinite; margin-right: 8px; font-size: 18px;">sync</span>
+          Select File
+        </button>
+        <button class="btn btn-secondary" style="background: transparent; border: 1px solid rgba(255,255,255,0.1); padding: 10px 24px; font-weight: 500;" (click)="downloadTemplate()" [disabled]="!authService.isAdmin()">
+          Download Template
+        </button>
+      </div>
+
+      <div *ngIf="fileName" style="margin-top: 16px; font-size: 13px; color: var(--accent-cyan);">
+        Processing: {{ fileName }}
+      </div>
+    </div>
+
+    <!-- Recent Imports Card -->
+    <div class="card">
+      <h3 style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--text-primary); text-transform: uppercase; margin-bottom: 20px;">RECENT IMPORTS</h3>
+      
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div *ngIf="importHistory.length === 0" style="color: var(--text-secondary); font-size: 13px; font-style: italic; padding: 12px 0;">
+          No recent imports recorded.
+        </div>
+        <div *ngFor="let imp of importHistory; let last = last" [style.border-bottom]="last ? 'none' : '1px solid rgba(255,255,255,0.05)'" [style.padding-bottom]="last ? '0' : '16px'" style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; gap: 16px; align-items: center;">
+            <div style="color: var(--success); display: flex; align-items: center;">
+              <span class="material-symbols-outlined" style="font-size: 26px;">description</span>
+            </div>
+            <div>
+              <div style="font-weight: 600; color: var(--text-primary); font-size: 13px; margin-bottom: 2px;">{{ imp.fileName }}</div>
+              <div style="font-size: 11px; color: var(--text-secondary);">
+                {{ imp.importType }} &bull; By {{ imp.user }} &bull; {{ imp.timestamp | date:'short' }}
+              </div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; color: var(--success); font-size: 12px; font-weight: 600;">
+            <span class="material-symbols-outlined" style="font-size: 16px;">check_circle</span>
+            +{{ imp.created }} / ~{{ imp.updated }} rows
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div style="display: flex; flex-direction: column; gap: 24px;">
+    
+    <!-- Reference Tables Card -->
+    <div class="card" style="padding: 24px;">
+      <h3 style="font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--text-primary); text-transform: uppercase; margin-bottom: 24px; display: flex; align-items: center; gap: 8px;">
+        <span class="material-symbols-outlined" style="color: var(--text-primary); font-size: 20px;">format_list_bulleted</span>
+        REFERENCE TABLES
+      </h3>
+      
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="ref-row" (click)="authService.isAdmin() ? selectRefTable('Countries') : null" [style.cursor]="authService.isAdmin() ? 'pointer' : 'default'">
+          <span class="ref-name">Countries</span>
+          <span class="badge-manage" *ngIf="authService.isAdmin()">
+            <span class="material-symbols-outlined" style="font-size: 14px;">edit</span>
+            Manage
+          </span>
+          <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;" *ngIf="!authService.isAdmin()">
+            View Only
+          </span>
+        </div>
+        <div class="ref-row" (click)="authService.isAdmin() ? selectRefTable('Cities') : null" [style.cursor]="authService.isAdmin() ? 'pointer' : 'default'">
+          <span class="ref-name">Cities / Regions</span>
+          <span class="badge-manage" *ngIf="authService.isAdmin()">
+            <span class="material-symbols-outlined" style="font-size: 14px;">edit</span>
+            Manage
+          </span>
+          <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;" *ngIf="!authService.isAdmin()">
+            View Only
+          </span>
+        </div>
+        <div class="ref-row" (click)="authService.isAdmin() ? selectRefTable('Ships') : null" [style.cursor]="authService.isAdmin() ? 'pointer' : 'default'">
+          <span class="ref-name">Ships / Locations</span>
+          <span class="badge-manage" *ngIf="authService.isAdmin()">
+            <span class="material-symbols-outlined" style="font-size: 14px;">edit</span>
+            Manage
+          </span>
+          <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;" *ngIf="!authService.isAdmin()">
+            View Only
+          </span>
+        </div>
+        <div class="ref-row" (click)="authService.isAdmin() ? selectRefTable('Programs') : null" [style.cursor]="authService.isAdmin() ? 'pointer' : 'default'">
+          <span class="ref-name">Program Names</span>
+          <span class="badge-manage" *ngIf="authService.isAdmin()">
+            <span class="material-symbols-outlined" style="font-size: 14px;">edit</span>
+            Manage
+          </span>
+          <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;" *ngIf="!authService.isAdmin()">
+            View Only
+          </span>
+        </div>
+        <div class="ref-row" (click)="authService.isAdmin() ? selectRefTable('ProjectTypes') : null" [style.cursor]="authService.isAdmin() ? 'pointer' : 'default'">
+          <span class="ref-name">Project Types</span>
+          <span class="badge-manage" *ngIf="authService.isAdmin()">
+            <span class="material-symbols-outlined" style="font-size: 14px;">edit</span>
+            Manage
+          </span>
+          <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;" *ngIf="!authService.isAdmin()">
+            View Only
+          </span>
+        </div>
+        <div class="ref-row" (click)="authService.isAdmin() ? selectRefTable('FinanceCodes') : null" [style.cursor]="authService.isAdmin() ? 'pointer' : 'default'">
+          <span class="ref-name">Finance Codes</span>
+          <span class="badge-manage" *ngIf="authService.isAdmin()">
+            <span class="material-symbols-outlined" style="font-size: 14px;">edit</span>
+            Manage
+          </span>
+          <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;" *ngIf="!authService.isAdmin()">
+            View Only
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Critical Warnings Card -->
+    <div class="card" style="border: 1px dashed rgba(245, 158, 11, 0.4); background-color: rgba(245, 158, 11, 0.03); padding: 24px;">
+      <h3 style="font-size: 13px; font-weight: 700; color: var(--warning); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+        <span class="material-symbols-outlined" style="font-size: 20px;">warning</span>
+        CRITICAL WARNINGS
+      </h3>
+      <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.5; margin-bottom: 16px;">
+        System detected {{ warningCount }} projects missing required Finance Codes for closing in the current fiscal period.
+      </p>
+      <a href="javascript:void(0)" (click)="navigateToFlagged()" style="color: var(--warning); font-size: 13px; font-weight: 600; text-decoration: underline;">View Flagged Records</a>
+    </div>
+
+  </div>
+</div>
+
+<!-- VALIDATION SUMMARY & DATA GRID PREVIEW -->
+<div *ngIf="activeTab === 'import' && isValidated">
+  <!-- AUDIT METRICS COUNTERS -->
+  <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px;">
+    <div class="card" style="padding: 16px; text-align: center; border-color: var(--border-medium);">
+      <div style="font-size: 11px; color: var(--text-secondary);">TOTAL ROWS DETECTED</div>
+      <div style="font-size: 24px; font-weight: 700; color: var(--text-primary);">{{ stats.total }}</div>
+    </div>
+    <div class="card" style="padding: 16px; text-align: center; border-color: rgba(16, 185, 129, 0.2);">
+      <div style="font-size: 11px; color: var(--success);">CLEAN RECORDS (NEW)</div>
+      <div style="font-size: 24px; font-weight: 700; color: var(--success);">{{ stats.valid }}</div>
+    </div>
+    <div class="card" style="padding: 16px; text-align: center; border-color: rgba(245, 158, 11, 0.2);">
+      <div style="font-size: 11px; color: var(--warning);">DUPLICATES (OVERWRITES)</div>
+      <div style="font-size: 24px; font-weight: 700; color: var(--warning);">{{ stats.duplicates }}</div>
+    </div>
+    <div class="card" style="padding: 16px; text-align: center; border-color: rgba(245, 158, 11, 0.15);">
+      <div style="font-size: 11px; color: var(--warning);">WARNING ISSUES</div>
+      <div style="font-size: 24px; font-weight: 700; color: var(--warning);">{{ stats.warnings }}</div>
+    </div>
+    <div class="card" style="padding: 16px; text-align: center; border-color: rgba(239, 68, 68, 0.2);">
+      <div style="font-size: 11px; color: var(--danger);">ERRORS (TO BE SKIPPED)</div>
+      <div style="font-size: 24px; font-weight: 700; color: var(--danger);">{{ stats.errors }}</div>
+    </div>
+  </div>
+
+  <div class="flex justify-between items-center mb-4">
+    <!-- Filter Toggle preview -->
+    <div class="flex gap-2">
+      <button class="btn btn-secondary btn-sm" [ngClass]="{'btn-primary': previewFilter === 'all'}" (click)="previewFilter='all'">Show All Rows</button>
+      <button class="btn btn-secondary btn-sm" [ngClass]="{'btn-primary': previewFilter === 'errors'}" (click)="previewFilter='errors'">Show Errors Only ({{ stats.errors }})</button>
+      <button class="btn btn-secondary btn-sm" [ngClass]="{'btn-primary': previewFilter === 'duplicates'}" (click)="previewFilter='duplicates'">Show Duplicates ({{ stats.duplicates }})</button>
+      <button class="btn btn-secondary btn-sm" [ngClass]="{'btn-primary': previewFilter === 'valid'}" (click)="previewFilter='valid'">Show Valid Rows ({{ stats.valid + stats.duplicates }})</button>
+    </div>
+
+    <!-- Approve Buttons -->
+    <div class="flex gap-2">
+      <button class="btn btn-secondary" (click)="isValidated=false">Re-Upload</button>
+      <button class="btn btn-primary" (click)="commitImport()" [disabled]="stats.valid + stats.duplicates === 0 || loading">
+        <span class="material-symbols-outlined" *ngIf="!loading">check_circle</span>
+        <span class="material-symbols-outlined" *ngIf="loading" style="animation: spin 1.5s linear infinite;">sync</span>
+        {{ loading ? 'Importing Data...' : 'Approve & Commit Import' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- PROJECTS TABLE GRID PREVIEW -->
+  <div class="card" style="overflow-x: auto; max-height: 50vh;">
+    <!-- Projects Preview -->
+    <table class="custom-table" *ngIf="importType === 'Projects'">
+      <thead>
+        <tr>
+          <th style="width: 50px;">Row</th>
+          <th>Project ID</th>
+          <th>Project Title</th>
+          <th>Program</th>
+          <th>Type</th>
+          <th>Country/City</th>
+          <th>Dates</th>
+          <th>Ship / Phase</th>
+          <th>Validations & Audit Log</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of getFilteredRows()" [style.background-color]="r.errors.length > 0 ? 'rgba(239, 68, 68, 0.04)' : (r.isDuplicate ? 'rgba(245, 158, 11, 0.03)' : 'transparent')">
+          <td>{{ r.index }}</td>
+          <td style="font-weight: 700;">{{ r.projectID }}</td>
+          <td>
+            <div style="font-weight: 500;">{{ r.projectTitle }}</div>
+            <div style="font-size: 11px; color: var(--text-secondary);">{{ r.frenchProjectName }}</div>
+          </td>
+          <td>{{ r.programName }}</td>
+          <td>{{ r.projectType }}</td>
+          <td>{{ r.country }} / {{ r.city }}</td>
+          <td>
+            <div style="font-size: 12px;">{{ r.startDateStr }}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">to {{ r.endDateStr }}</div>
+          </td>
+          <td>{{ r.ship }} / {{ r.preShipPost }}</td>
+          <td>
+            <!-- Errors -->
+            <div *ngFor="let err of r.errors" style="color: var(--danger); font-size: 12px; display: flex; align-items: center; gap: 4px;">
+              <span class="material-symbols-outlined" style="font-size: 14px;">cancel</span>
+              {{ err }}
+            </div>
+            <!-- Warnings -->
+            <div *ngFor="let warn of r.warnings" style="color: var(--warning); font-size: 12px; display: flex; align-items: center; gap: 4px;">
+              <span class="material-symbols-outlined" style="font-size: 14px;">warning</span>
+              {{ warn }}
+            </div>
+            <!-- Clean -->
+            <div *ngIf="r.errors.length === 0 && r.warnings.length === 0 && !r.isDuplicate" style="color: var(--success); font-size: 12px; display: flex; align-items: center; gap: 4px;">
+              <span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span>
+              Ready to import
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Participants Preview -->
+    <table class="custom-table" *ngIf="importType === 'Participants'">
+      <thead>
+        <tr>
+          <th style="width: 50px;">Row</th>
+          <th>Participant ID</th>
+          <th>Title & Full Name</th>
+          <th>Gender</th>
+          <th>Profession</th>
+          <th>Hospital / Facility</th>
+          <th>Country/Region</th>
+          <th>Contact Info</th>
+          <th>Validations & Audit Log</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of getFilteredRows()" [style.background-color]="r.errors.length > 0 ? 'rgba(239, 68, 68, 0.04)' : (r.isDuplicate ? 'rgba(245, 158, 11, 0.03)' : 'transparent')">
+          <td>{{ r.index }}</td>
+          <td style="font-weight: 700;">{{ r.participantID || '(Auto-generated)' }}</td>
+          <td>
+            <div style="font-weight: 500;">{{ r.title }} {{ r.firstName }} {{ r.lastName }}</div>
+          </td>
+          <td>{{ r.gender }}</td>
+          <td>{{ r.professionTitle }}</td>
+          <td>{{ r.institution }}</td>
+          <td>{{ r.country }} / {{ r.region }}</td>
+          <td>
+            <div style="font-size: 12px;">{{ r.email }}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">{{ r.mobilePhone }}</div>
+          </td>
+          <td>
+            <!-- Errors -->
+            <div *ngFor="let err of r.errors" style="color: var(--danger); font-size: 12px; display: flex; align-items: center; gap: 4px;">
+              <span class="material-symbols-outlined" style="font-size: 14px;">cancel</span>
+              {{ err }}
+            </div>
+            <!-- Warnings -->
+            <div *ngFor="let warn of r.warnings" style="color: var(--warning); font-size: 12px; display: flex; align-items: center; gap: 4px;">
+              <span class="material-symbols-outlined" style="font-size: 14px;">warning</span>
+              {{ warn }}
+            </div>
+            <!-- Clean -->
+            <div *ngIf="r.errors.length === 0 && r.warnings.length === 0 && !r.isDuplicate" style="color: var(--success); font-size: 12px; display: flex; align-items: center; gap: 4px;">
+              <span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span>
+              Ready to import
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- REFERENCE MANAGER MODAL -->
+<div class="modal-backdrop" *ngIf="showRefModal">
+  <div class="card modal-container" style="width: 800px; max-width: 90%; max-height: 85vh; display: grid; grid-template-rows: auto 1fr; padding: 0; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+    
+    <!-- Modal Header -->
+    <div style="padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; background-color: rgba(255,255,255,0.01);">
+      <h2 style="font-size: 18px; font-weight: 600; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+        <span class="material-symbols-outlined" style="color: var(--primary);">settings_suggest</span>
+        Manage {{ activeRefTable }}
+      </h2>
+      <button (click)="showRefModal = false" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; outline: none;">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div style="display: grid; grid-template-columns: 1.2fr 1fr; overflow: hidden; height: 100%;">
+      
+      <!-- Left Pane: List Items -->
+      <div style="padding: 24px; border-right: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; overflow-y: auto; max-height: 60vh;">
+        <h4 style="margin-top: 0; margin-bottom: 16px; font-size: 12px; color: var(--text-secondary); letter-spacing: 0.5px; text-transform: uppercase;">Existing Records</h4>
+        
+        <!-- Loading State -->
+        <div *ngIf="loading && (!references || !references.countries)" style="display: flex; justify-content: center; padding: 40px; color: var(--text-secondary);">
+          Loading...
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;" *ngIf="!loading">
+          
+          <!-- Countries List -->
+          <ng-container *ngIf="activeRefTable === 'Countries'">
+            <div *ngFor="let item of references.countries" style="padding: 10px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+              <span>{{ item.countryName }}</span>
+              <span style="font-family: monospace; font-size: 11px; color: var(--accent-cyan);">{{ item.countryCode || 'N/A' }}</span>
+            </div>
+          </ng-container>
+
+          <!-- Cities List -->
+          <ng-container *ngIf="activeRefTable === 'Cities'">
+            <div *ngFor="let item of references.cities" style="padding: 10px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; display: flex; flex-direction: column; gap: 2px; font-size: 13px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="font-weight: 500;">{{ item.cityName }}</span>
+                <span style="font-size: 11px; color: var(--text-secondary);">{{ item.regionName || '(No Region)' }}</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted);">Country ID: {{ item.countryID }}</div>
+            </div>
+          </ng-container>
+
+          <!-- Ships List -->
+          <ng-container *ngIf="activeRefTable === 'Ships'">
+            <div *ngFor="let item of references.ships" style="padding: 10px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+              <span>{{ item.shipName }}</span>
+              <span style="font-size: 11px;" [style.color]="item.isActive ? 'var(--success)' : 'var(--text-muted)'">{{ item.isActive ? 'Active' : 'Inactive' }}</span>
+            </div>
+          </ng-container>
+
+          <!-- Programs List -->
+          <ng-container *ngIf="activeRefTable === 'Programs'">
+            <div *ngFor="let item of references.programs" style="padding: 12px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; font-size: 13px;">
+              <div style="font-weight: 600; margin-bottom: 2px; color: var(--text-primary);">{{ item.name }}</div>
+              <div style="font-size: 11px; color: var(--text-secondary);">{{ item.description || 'No description' }}</div>
+            </div>
+          </ng-container>
+
+          <!-- Project Types List -->
+          <ng-container *ngIf="activeRefTable === 'ProjectTypes'">
+            <div *ngFor="let item of references.projectTypes" style="padding: 10px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; font-size: 13px;">
+              {{ item.typeName }}
+            </div>
+          </ng-container>
+
+          <!-- Finance Codes List -->
+          <ng-container *ngIf="activeRefTable === 'FinanceCodes'">
+            <div *ngFor="let item of references.financeCodes" style="padding: 10px 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; font-size: 13px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                <span style="font-weight: 700; font-family: monospace;">{{ item.code }}</span>
+                <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent-cyan);">{{ item.codeType }}</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-secondary);">{{ item.description || 'No description' }}</div>
+            </div>
+          </ng-container>
+
+        </div>
+      </div>
+
+      <!-- Right Pane: Add New Form -->
+      <div style="padding: 24px; display: flex; flex-direction: column; overflow-y: auto; max-height: 60vh;">
+        <h4 style="margin-top: 0; margin-bottom: 20px; font-size: 12px; color: var(--text-secondary); letter-spacing: 0.5px; text-transform: uppercase;">Create New Record</h4>
+        
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          
+          <!-- Country Form -->
+          <div *ngIf="activeRefTable === 'Countries'" style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Country Name</label>
+              <input type="text" [(ngModel)]="newRefData.countryName" placeholder="e.g. Senegal" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; outline: none;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Country Code</label>
+              <input type="text" [(ngModel)]="newRefData.countryCode" placeholder="e.g. SEN" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; outline: none;">
+            </div>
+          </div>
+
+          <!-- City Form -->
+          <div *ngIf="activeRefTable === 'Cities'" style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">City Name</label>
+              <input type="text" [(ngModel)]="newRefData.cityName" placeholder="e.g. Dakar" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; outline: none;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Region / State</label>
+              <input type="text" [(ngModel)]="newRefData.regionName" placeholder="e.g. Dakar Region" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; outline: none;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Country</label>
+              <select [(ngModel)]="newRefData.countryID" style="background: #111827; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; outline: none;">
+                <option value="">-- Select Country --</option>
+                <option *ngFor="let c of references.countries" [value]="c.countryID">{{ c.countryName }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Ship Form -->
+          <div *ngIf="activeRefTable === 'Ships'" style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Ship Name</label>
+              <input type="text" [(ngModel)]="newRefData.shipName" placeholder="e.g. Global Mercy" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; outline: none;">
+            </div>
+          </div>
+
+          <!-- Program Form -->
+          <div *ngIf="activeRefTable === 'Programs'" style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Program Name</label>
+              <input type="text" [(ngModel)]="newRefData.name" placeholder="e.g. Dental & Oral Health" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; outline: none;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Description</label>
+              <textarea [(ngModel)]="newRefData.description" placeholder="e.g. Direct patient interventions and training" rows="3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; outline: none; font-family: inherit; resize: none;"></textarea>
+            </div>
+          </div>
+
+          <!-- Project Type Form -->
+          <div *ngIf="activeRefTable === 'ProjectTypes'" style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Type Name</label>
+              <input type="text" [(ngModel)]="newRefData.typeName" placeholder="e.g. Mentoring" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; outline: none;">
+            </div>
+          </div>
+
+          <!-- Finance Code Form -->
+          <div *ngIf="activeRefTable === 'FinanceCodes'" style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Finance Code</label>
+              <input type="text" [(ngModel)]="newRefData.code" placeholder="e.g. SEN" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; outline: none;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Code Type</label>
+              <select [(ngModel)]="newRefData.codeType" style="background: #111827; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; outline: none;">
+                <option value="">-- Select Type --</option>
+                <option value="Location">Location</option>
+                <option value="Program">Program</option>
+                <option value="Purpose">Purpose</option>
+              </select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Description</label>
+              <input type="text" [(ngModel)]="newRefData.description" placeholder="e.g. Senegal Country Office" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; outline: none;">
+            </div>
+          </div>
+
+          <button class="btn btn-primary" (click)="addRefRecord()" [disabled]="loading" style="margin-top: 12px; width: 100%; justify-content: center; height: 38px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+            <span class="material-symbols-outlined" *ngIf="!loading">add_circle</span>
+            <span class="material-symbols-outlined" *ngIf="loading" style="animation: spin 1.5s linear infinite;">sync</span>
+            {{ loading ? 'Saving...' : 'Add Record' }}
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- USER ACCESS CONTROL SCREEN -->
+<div *ngIf="activeTab === 'users' && authService.isAdmin()" style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 32px;">
+  
+  <!-- LEFT COLUMN: User Directory -->
+  <div class="card" style="padding: 24px;">
+    <h3 style="font-size: 13px; font-weight: 700; letter-spacing: 0.5px; color: var(--text-primary); text-transform: uppercase; margin-bottom: 24px; display: flex; align-items: center; gap: 8px;">
+      <span class="material-symbols-outlined" style="color: var(--primary);">supervised_user_circle</span>
+      ACTIVE USER DIRECTORY
+    </h3>
+
+    <div *ngIf="userSuccessMessage" style="background-color: var(--success-glow); border: 1px solid rgba(16, 185, 129, 0.2); color: var(--success); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+      <span class="material-symbols-outlined" style="font-size: 18px;">check_circle</span>
+      {{ userSuccessMessage }}
+    </div>
+
+    <div class="table-container" style="overflow-x: auto;">
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Avatar</th>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Privilege Level</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let u of authService.users">
+            <td style="width: 60px;">
+              <div style="width: 32px; height: 32px; border-radius: 50%; background-color: var(--primary); display: flex; justify-content: center; align-items: center; font-weight: bold; color: #ffffff; font-size: 12px;">
+                {{ u.initials }}
+              </div>
+            </td>
+            <td>
+              <div style="font-weight: 600; color: var(--text-primary);">{{ u.name }}</div>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'badge-success': u.role === 'admin',
+                'badge-info': u.role === 'reporter',
+                'badge-warning': u.role === 'viewer'
+              }">{{ u.roleName }}</span>
+            </td>
+            <td>
+              <span style="font-size: 12px; color: var(--text-secondary);" *ngIf="u.role === 'admin'">
+                Full read/write, database imports, admin settings
+              </span>
+              <span style="font-size: 12px; color: var(--text-secondary);" *ngIf="u.role === 'reporter'">
+                Read/write projects & outputs, no import/admin access
+              </span>
+              <span style="font-size: 12px; color: var(--text-secondary);" *ngIf="u.role === 'viewer'">
+                Read-only access, no modifications or logs allowed
+              </span>
+            </td>
+            <td class="text-right">
+              <button class="btn btn-danger btn-sm" (click)="deleteUser(u.name)" [disabled]="u.name === 'Admin User' || u.name === 'Jane Doe' || u.name === 'Guest User'" title="Delete User">
+                <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN: Create User Form -->
+  <div style="display: flex; flex-direction: column; gap: 24px;">
+    <div class="card" style="padding: 24px;">
+      <h3 style="font-size: 13px; font-weight: 700; letter-spacing: 0.5px; color: var(--text-primary); text-transform: uppercase; margin-bottom: 24px;">
+        REGISTER NEW USER
+      </h3>
+
+      <div *ngIf="userErrorMessage" style="background-color: var(--danger-glow); border: 1px solid rgba(239, 68, 68, 0.2); color: var(--danger); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; display: flex; align-items: center; gap: 8px;">
+        <span class="material-symbols-outlined" style="font-size: 18px;">error</span>
+        {{ userErrorMessage }}
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Full Name *</label>
+          <input type="text" [(ngModel)]="newUser.name" placeholder="e.g. Alice Smith" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; outline: none; border-color: rgba(255,255,255,0.15)">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">User Initials * (Max 3 chars)</label>
+          <input type="text" [(ngModel)]="newUser.initials" placeholder="e.g. AS" maxlength="3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; outline: none; border-color: rgba(255,255,255,0.15)">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Access Role *</label>
+          <select [(ngModel)]="newUser.role" style="background: #111827; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; outline: none; border-color: rgba(255,255,255,0.15)">
+            <option value="admin">System Administrator (Full access)</option>
+            <option value="reporter">Reporting Unit (Read/Write, no import)</option>
+            <option value="viewer">Guest Viewer (Read-only)</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary" (click)="registerUser()" style="margin-top: 12px; width: 100%; justify-content: center; height: 38px; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+          <span class="material-symbols-outlined">person_add</span>
+          Add User Account
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<style>
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+</style>

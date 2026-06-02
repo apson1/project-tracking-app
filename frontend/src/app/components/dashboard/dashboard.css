@@ -1,0 +1,18 @@
+.upcoming-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.upcoming-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: rgba(99, 102, 241, 0.1);
+  color: var(--primary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.upcoming-icon span {
+  font-size: 18px;
+}

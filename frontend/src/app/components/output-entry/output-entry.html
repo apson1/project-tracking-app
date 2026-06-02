@@ -1,0 +1,274 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Periodic Output Entry</h1>
+    <div class="page-subtitle">Dedicated data-entry screen for recording monthly metrics, surgeries, training, and targets.</div>
+  </div>
+</div>
+
+<!-- Lock warning banner for read-only Viewers -->
+<div *ngIf="!authService.hasWriteAccess()" style="background-color: rgba(239, 68, 68, 0.05); border: 1px dashed rgba(239, 68, 68, 0.3); color: var(--danger); padding: 16px; border-radius: 10px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; font-size: 13px;">
+  <span class="material-symbols-outlined" style="font-size: 24px;">lock</span>
+  <div>
+    <strong>Form Locked:</strong> You are viewing this page as <strong>{{ authService.currentUser().name }}</strong> ({{ authService.currentUser().roleName }}). Submitting project outcomes, output logs, or planned KPI targets is disabled for read-only roles.
+  </div>
+</div>
+
+<div class="card mb-4" style="background: linear-gradient(135deg, rgba(99,102,241,0.03) 0%, rgba(15,19,34,0.6) 100%);">
+  <div class="form-row">
+    <!-- Select Project -->
+    <div class="form-group" style="grid-column: span 2;">
+      <label class="form-label" style="font-weight: 600; color: var(--text-primary);">1. Select Target Project / Event *</label>
+      <select class="form-control" [(ngModel)]="selectedProjectIDNumber" (change)="resetForm()">
+        <option value="">Choose Project Code - Title...</option>
+        <option *ngFor="let p of projects" [value]="p.projectIDNumber">{{ p.projectID }} - {{ p.projectTitle }} ({{ p.countryName }})</option>
+      </select>
+    </div>
+
+    <!-- Select Output Category -->
+    <div class="form-group">
+      <label class="form-label" style="font-weight: 600; color: var(--text-primary);">2. Select Log Category *</label>
+      <select class="form-control" [(ngModel)]="selectedCategory" (change)="onCategoryChange()">
+        <option value="Participant">Trainee / Participant Output</option>
+        <option value="Patient">Patient Intervention Output</option>
+        <option value="DMS">Donations & DMS Output</option>
+        <option value="Planned">KPI Planned Targets</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="card" *ngIf="selectedProjectIDNumber">
+  <h3 style="font-size: 16px; margin-bottom: 20px; text-transform: uppercase; color: var(--text-secondary); border-bottom: 1px solid var(--border-light); padding-bottom: 8px;">
+    3. Enter Operational Outcomes ({{ selectedCategory }})
+  </h3>
+
+  <!-- ALERT NOTIFICATIONS -->
+  <div *ngIf="successMessage" style="background-color: var(--success-glow); border: 1px solid rgba(16, 185, 129, 0.2); color: var(--success); padding: 16px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+    <span class="material-symbols-outlined">check_circle</span>
+    {{ successMessage }}
+  </div>
+
+  <div *ngIf="errorMessage" style="background-color: var(--danger-glow); border: 1px solid rgba(239, 68, 68, 0.2); color: var(--danger); padding: 16px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+    <span class="material-symbols-outlined">error</span>
+    {{ errorMessage }}
+  </div>
+
+  <fieldset [disabled]="!authService.hasWriteAccess()" style="border: none; padding: 0; margin: 0;">
+  <!-- CATEGORY 1: PARTICIPANT OUTPUT -->
+  <div *ngIf="selectedCategory === 'Participant'">
+    <div class="form-group">
+      <label class="form-label">Trainee Participant *</label>
+      <select class="form-control" [(ngModel)]="form.participantIDNumber">
+        <option value="">Select Registered Person</option>
+        <option *ngFor="let p of participants" [value]="p.participantIDNumber">{{ p.lastName }}, {{ p.firstName }} ({{ p.participantID }} - {{ p.professionTitle }})</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Output Indicator Type *</label>
+        <select class="form-control" [(ngModel)]="form.outputTypeID" (change)="onOutputTypeChange()">
+          <option value="">Select Type</option>
+          <option *ngFor="let ot of filteredOutputTypes" [value]="ot.outputTypeID">{{ ot.typeName }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Specific Output Sub-Type</label>
+        <select class="form-control" [(ngModel)]="form.specificOutputTypeID" [disabled]="!form.outputTypeID">
+          <option value="">Select Specific Type</option>
+          <option *ngFor="let s of filteredSpecificOutputs" [value]="s.specificOutputTypeID">{{ s.specificTypeName }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Instruction Output Amount (Hours/Sessions) *</label>
+        <input type="number" class="form-control" [(ngModel)]="form.outputAmount">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reporting Period</label>
+        <input type="text" class="form-control" placeholder="e.g. Q1 2026, May 2026" [(ngModel)]="form.reportingPeriod">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reporting Date</label>
+        <input type="date" class="form-control" [(ngModel)]="form.reportingDate">
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORY 2: PATIENT INTERVENTION -->
+  <div *ngIf="selectedCategory === 'Patient'">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Anonymized Patient ID Code *</label>
+        <input type="text" class="form-control" [(ngModel)]="form.patientID">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Patient Sex</label>
+        <select class="form-control" [(ngModel)]="form.sex">
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Patient Age Group</label>
+        <select class="form-control" [(ngModel)]="form.ageGroup">
+          <option value="0-5">0-5 Children</option>
+          <option value="6-12">6-12 Children</option>
+          <option value="13-17">13-17 Youth</option>
+          <option value="18-59">18-59 Adults</option>
+          <option value="60+">60+ Elderly</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Surgical Intervention Type *</label>
+        <select class="form-control" [(ngModel)]="form.outputTypeID">
+          <option value="">Select Procedure</option>
+          <option *ngFor="let ot of filteredOutputTypes" [value]="ot.outputTypeID">{{ ot.typeName }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Number of Procedures</label>
+        <input type="number" class="form-control" [(ngModel)]="form.outputAmount">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Residence Country</label>
+        <select class="form-control" [(ngModel)]="form.countryID" (change)="onCountryChange()">
+          <option value="">Select Country</option>
+          <option *ngFor="let c of references.countries" [value]="c.countryID">{{ c.countryName }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Residence Region / City</label>
+        <select class="form-control" [(ngModel)]="form.cityID" [disabled]="!form.countryID">
+          <option value="">Select Region</option>
+          <option *ngFor="let ct of filteredCities" [value]="ct.cityID">{{ ct.cityName }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reporting Date</label>
+        <input type="date" class="form-control" [(ngModel)]="form.reportingDate">
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORY 3: DMS / INFRASTRUCTURE -->
+  <div *ngIf="selectedCategory === 'DMS'">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">DMS / Donation Type *</label>
+        <select class="form-control" [(ngModel)]="form.outputTypeID" (change)="onOutputTypeChange()">
+          <option value="">Select Output Type</option>
+          <option *ngFor="let ot of filteredOutputTypes" [value]="ot.outputTypeID">{{ ot.typeName }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Specific Output Category</label>
+        <select class="form-control" [(ngModel)]="form.specificOutputTypeID" [disabled]="!form.outputTypeID">
+          <option value="">Select Specific Type</option>
+          <option *ngFor="let s of filteredSpecificOutputs" [value]="s.specificOutputTypeID">{{ s.specificTypeName }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Output Quantity *</label>
+        <input type="number" class="form-control" [(ngModel)]="form.outputAmount">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reporting Period</label>
+        <input type="text" class="form-control" placeholder="e.g. May 2026" [(ngModel)]="form.reportingPeriod">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reporting Date</label>
+        <input type="date" class="form-control" [(ngModel)]="form.reportingDate">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Recipient Demographic Target</label>
+        <select class="form-control" [(ngModel)]="form.adultChild">
+          <option value="Both">General</option>
+          <option value="Adult">Adults Only</option>
+          <option value="Child">Children Only</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Recipient Gender Segment</label>
+        <select class="form-control" [(ngModel)]="form.gender">
+          <option value="Both">Co-ed</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Program Unit Segment</label>
+        <input type="text" class="form-control" placeholder="e.g. Donation, Setup" [(ngModel)]="form.programTypeOfOutput">
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORY 4: PLANNED KPI TARGETS -->
+  <div *ngIf="selectedCategory === 'Planned'">
+    <div class="form-group">
+      <label class="form-label">Target Metric Indicator *</label>
+      <select class="form-control" [(ngModel)]="form.plannedOutputTypeID">
+        <option value="">Select Metric Indicator</option>
+        <option *ngFor="let ot of filteredOutputTypes" [value]="ot.outputTypeID">{{ ot.typeName }} ({{ ot.category }})</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Target Amount *</label>
+        <input type="number" class="form-control" [(ngModel)]="form.plannedAmount">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reporting Period</label>
+        <input type="text" class="form-control" placeholder="e.g. Q1, Full Project" [(ngModel)]="form.reportingPeriod">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target Year / Date</label>
+        <input type="text" class="form-control" placeholder="Year" [(ngModel)]="form.plannedDateYear">
+      </div>
+    </div>
+  </div>
+
+  <!-- GENERAL COMMENTS -->
+  <div class="form-group" style="margin-top: 12px;">
+    <label class="form-label">General Description & Comments</label>
+    <textarea class="form-control" rows="3" placeholder="Enter comments here..." [(ngModel)]="form.comments"></textarea>
+  </div>
+
+  <!-- SUBMIT BUTTON -->
+  <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+    <button class="btn btn-primary" (click)="submitEntry()" [disabled]="loading">
+      <span class="material-symbols-outlined" *ngIf="!loading">save</span>
+      <span class="material-symbols-outlined" *ngIf="loading" style="animation: spin 1.5s linear infinite;">sync</span>
+      {{ loading ? 'Logging Entry...' : 'Submit Log Entry' }}
+    </button>
+  </div>
+  </fieldset>
+</div>
+
+<div class="card text-center" *ngIf="!selectedProjectIDNumber" style="padding: 60px; color: var(--text-muted);">
+  <span class="material-symbols-outlined" style="font-size: 48px; margin-bottom: 12px;">quick_reference_all</span>
+  <div>Please select a Project Code from step 1 above to open the entry spreadsheet.</div>
+</div>
+
+<style>
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+</style>

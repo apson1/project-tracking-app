@@ -1,0 +1,292 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Projects & Events</h1>
+    <div class="page-subtitle">Track, filter, and manage scheduled surgical out-reaches, capacity building training, and hospital setups.</div>
+  </div>
+  <button *ngIf="authService.hasWriteAccess()" class="btn btn-primary" (click)="openCreateModal()">
+    <span class="material-symbols-outlined">add</span>
+    New Project
+  </button>
+</div>
+
+<!-- SEARCH & FILTERS -->
+<div class="card mb-4">
+  <div class="form-row">
+    <!-- Search Title -->
+    <div class="form-group">
+      <label class="form-label">Search Keywords</label>
+      <input type="text" class="form-control" placeholder="Search title, ID, venue..." [(ngModel)]="filters.search" (keyup.enter)="applyFilters()">
+    </div>
+    
+    <!-- Country Filter -->
+    <div class="form-group">
+      <label class="form-label">Country</label>
+      <select class="form-control" [(ngModel)]="filters.countryId" (change)="applyFilters()">
+        <option value="">All Countries</option>
+        <option *ngFor="let c of references.countries" [value]="c.countryID">{{ c.countryName }}</option>
+      </select>
+    </div>
+
+    <!-- Program Filter -->
+    <div class="form-group">
+      <label class="form-label">Program Line</label>
+      <select class="form-control" [(ngModel)]="filters.programId" (change)="applyFilters()">
+        <option value="">All Programs</option>
+        <option *ngFor="let p of references.programs" [value]="p.programID">{{ p.name }}</option>
+      </select>
+    </div>
+
+    <!-- Status Filter -->
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <select class="form-control" [(ngModel)]="filters.status" (change)="applyFilters()">
+        <option value="">All Statuses</option>
+        <option value="Upcoming">Upcoming</option>
+        <option value="Active">Active</option>
+        <option value="Completed">Completed</option>
+      </select>
+    </div>
+
+    <!-- Additional filters row toggle -->
+    <div class="form-group" style="display: flex; align-items: flex-end; gap: 8px;">
+      <button class="btn btn-secondary" style="flex-grow: 1;" (click)="applyFilters()">Filter</button>
+      <button class="btn btn-secondary" style="background: none; border: 1px dashed var(--border-medium);" (click)="clearFilters()" title="Reset Filters">
+        <span class="material-symbols-outlined" style="vertical-align: middle;">restart_alt</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- PROJECTS DATA GRID -->
+<div class="card">
+  <div *ngIf="loading && projects.length === 0" class="text-center" style="padding: 40px;">
+    Loading projects database...
+  </div>
+  
+  <div *ngIf="!loading && projects.length === 0" class="text-center" style="padding: 40px; color: var(--text-muted);">
+    No projects found matching the specified filters.
+  </div>
+
+  <div class="table-container" *ngIf="projects.length > 0">
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <th>Project ID</th>
+          <th>Project Title</th>
+          <th>Program Line</th>
+          <th>Country/City</th>
+          <th>Pre/Ship/Post</th>
+          <th>Dates</th>
+          <th>Status</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let proj of projects">
+          <td style="font-weight: 700; color: var(--text-primary);">{{ proj.projectID }}</td>
+          <td>
+            <div style="font-weight: 500;">{{ proj.projectTitle }}</div>
+            <div style="font-size: 12px; color: var(--text-secondary);" *ngIf="proj.frenchProjectName">{{ proj.frenchProjectName }}</div>
+          </td>
+          <td>{{ proj.programName }}</td>
+          <td>
+            <div>{{ proj.countryName }}</div>
+            <div style="font-size: 12px; color: var(--text-muted);">{{ proj.cityName }}</div>
+          </td>
+          <td>
+            <span class="badge badge-info">{{ proj.preShipPost || 'N/A' }}</span>
+          </td>
+          <td>
+            <div style="font-size: 13px;">{{ proj.startDate | date:'mediumDate' }}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">to {{ proj.endDate | date:'mediumDate' }}</div>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="{
+              'badge-success': proj.status === 'Active',
+              'badge-warning': proj.status === 'Upcoming',
+              'badge-danger': proj.status === 'Completed'
+            }">{{ proj.status }}</span>
+          </td>
+          <td class="text-right">
+            <div style="display: inline-flex; gap: 8px;">
+              <a [routerLink]="['/projects', proj.projectIDNumber]" class="btn btn-secondary btn-sm" title="View details/tabs">
+                <span class="material-symbols-outlined" style="font-size: 16px;">visibility</span>
+              </a>
+              <button *ngIf="authService.hasWriteAccess()" class="btn btn-secondary btn-sm" (click)="openEditModal(proj)" title="Edit project">
+                <span class="material-symbols-outlined" style="font-size: 16px;">edit</span>
+              </button>
+              <button *ngIf="authService.hasAdminAccess()" class="btn btn-danger btn-sm" (click)="deleteProject(proj)" title="Delete project">
+                <span class="material-symbols-outlined" style="font-size: 16px;">delete</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- PAGINATION CONTROLS -->
+  <div class="flex justify-between items-center mt-4" *ngIf="projects.length > 0">
+    <div style="font-size: 13px; color: var(--text-secondary);">
+      Showing {{ (filters.page - 1) * filters.pageSize + 1 }} to {{ Math.min(filters.page * filters.pageSize, totalCount) }} of {{ totalCount }} projects
+    </div>
+    
+    <div class="flex gap-2">
+      <button class="btn btn-secondary btn-sm" [disabled]="filters.page === 1" (click)="changePage(filters.page - 1)">
+        Previous
+      </button>
+      <button *ngFor="let p of [].constructor(totalPages); let i = index" class="btn btn-secondary btn-sm" [ngClass]="{'btn-primary': filters.page === i + 1}" (click)="changePage(i + 1)">
+        {{ i + 1 }}
+      </button>
+      <button class="btn btn-secondary btn-sm" [disabled]="filters.page === totalPages" (click)="changePage(filters.page + 1)">
+        Next
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- DIALOG MODAL (CREATE / EDIT PROJECT) -->
+<div class="modal-overlay" *ngIf="showModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 style="font-size: 20px;">{{ modalTitle }}</h2>
+      <button class="btn btn-secondary btn-sm" style="border: none; background: none;" (click)="showModal = false">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <!-- Grid Layout Form -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Project ID Code</label>
+          <input type="text" class="form-control" placeholder="e.g. PRJ-2026-01 (or auto-gen)" [(ngModel)]="projectForm.projectID">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Project Title *</label>
+          <input type="text" class="form-control" placeholder="Title" [(ngModel)]="projectForm.projectTitle" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">French Project Name</label>
+          <input type="text" class="form-control" placeholder="French Translation Title" [(ngModel)]="projectForm.frenchProjectName">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Program Name</label>
+          <select class="form-control" [(ngModel)]="projectForm.programID">
+            <option value="">Select Program</option>
+            <option *ngFor="let p of references.programs" [value]="p.programID">{{ p.name }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Project Type</label>
+          <select class="form-control" [(ngModel)]="projectForm.projectTypeID">
+            <option value="">Select Project Type</option>
+            <option *ngFor="let pt of references.projectTypes" [value]="pt.projectTypeID">{{ pt.typeName }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Participant Type</label>
+          <select class="form-control" [(ngModel)]="projectForm.participantTypeID">
+            <option value="">Select Participant Type</option>
+            <option *ngFor="let pt of references.participantTypes" [value]="pt.participantTypeID">{{ pt.typeName }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Start Date *</label>
+          <input type="date" class="form-control" [(ngModel)]="projectForm.startDate" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Date *</label>
+          <input type="date" class="form-control" [(ngModel)]="projectForm.endDate" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Instruction Days</label>
+          <input type="number" class="form-control" [(ngModel)]="projectForm.instructionDays">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Ship Presence</label>
+          <select class="form-control" [(ngModel)]="projectForm.shipID">
+            <option value="">Select Ship (or Land)</option>
+            <option *ngFor="let s of references.ships" [value]="s.shipID">{{ s.shipName }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Operational Phase (Pre/Ship/Post)</label>
+          <select class="form-control" [(ngModel)]="projectForm.preShipPost">
+            <option value="">Select Phase</option>
+            <option value="Pre">Pre-Ship</option>
+            <option value="Ship">Ship Field Service</option>
+            <option value="Post">Post-Ship</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Country</label>
+          <select class="form-control" [(ngModel)]="projectForm.countryID" (change)="onCountryChange()">
+            <option value="">Select Country</option>
+            <option *ngFor="let c of references.countries" [value]="c.countryID">{{ c.countryName }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">City / Region</label>
+          <select class="form-control" [(ngModel)]="projectForm.cityID" [disabled]="!projectForm.countryID">
+            <option value="">Select City</option>
+            <option *ngFor="let ct of filteredCities" [value]="ct.cityID">{{ ct.cityName }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Specific Venue</label>
+          <input type="text" class="form-control" placeholder="Hospital, Center, etc." [(ngModel)]="projectForm.venue">
+        </div>
+      </div>
+
+      <!-- FINANCE SECTION -->
+      <h3 style="font-size: 14px; margin-top: 16px; margin-bottom: 8px; color: var(--text-secondary); text-transform: uppercase;">Finance Tracking Codes</h3>
+      <div class="form-row" style="background-color: rgba(255,255,255,0.01); padding: 12px; border-radius: 8px; border: 1px dashed var(--border-light);">
+        <div class="form-group">
+          <label class="form-label">Location Code</label>
+          <select class="form-control" [(ngModel)]="projectForm.financeLocationID">
+            <option value="">Select Location Code</option>
+            <option *ngFor="let fc of filteredFinanceLocations" [value]="fc.financeCodeID">{{ fc.code }} - {{ fc.description }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Program Code</label>
+          <select class="form-control" [(ngModel)]="projectForm.financeProgramID">
+            <option value="">Select Program Code</option>
+            <option *ngFor="let fc of filteredFinancePrograms" [value]="fc.financeCodeID">{{ fc.code }} - {{ fc.description }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Purpose Code</label>
+          <select class="form-control" [(ngModel)]="projectForm.financePurposeID">
+            <option value="">Select Purpose Code</option>
+            <option *ngFor="let fc of filteredFinancePurposes" [value]="fc.financeCodeID">{{ fc.code }} - {{ fc.description }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top: 16px;">
+        <label class="form-label">General Comments</label>
+        <textarea class="form-control" rows="3" placeholder="Additional details..." [(ngModel)]="projectForm.projectComments"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" (click)="showModal = false">Cancel</button>
+      <button class="btn btn-primary" (click)="saveProject()">Save Changes</button>
+    </div>
+  </div>
+</div>

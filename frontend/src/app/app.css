@@ -1,0 +1,6 @@
+.profile-card-hover:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+.dropdown-item-hover:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}

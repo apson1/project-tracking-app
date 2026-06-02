@@ -1,0 +1,78 @@
+<div class="app-container">
+  <!-- Left Side Navigation Bar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <span class="material-symbols-outlined" style="color: var(--primary);">favorite</span>
+      ImpactTracker
+    </div>
+    
+    <ul class="sidebar-nav">
+      <li>
+        <a class="sidebar-link" routerLink="/dashboard" routerLinkActive="active">
+          <span class="material-symbols-outlined">grid_view</span>
+          Dashboard
+        </a>
+      </li>
+      <li>
+        <a class="sidebar-link" routerLink="/projects" routerLinkActive="active">
+          <span class="material-symbols-outlined">article</span>
+          Projects
+        </a>
+      </li>
+      <li>
+        <a class="sidebar-link" routerLink="/participants" routerLinkActive="active">
+          <span class="material-symbols-outlined">group</span>
+          Participants
+        </a>
+      </li>
+      <li>
+        <a class="sidebar-link" routerLink="/output-entry" routerLinkActive="active">
+          <span class="material-symbols-outlined">note_add</span>
+          Output Entry
+        </a>
+      </li>
+      <li>
+        <a class="sidebar-link" routerLink="/import-admin" routerLinkActive="active">
+          <span class="material-symbols-outlined">file_upload</span>
+          Import / Admin
+        </a>
+      </li>
+    </ul>
+    
+    <!-- User Profile Dropdown Switcher -->
+    <div style="padding: 16px 24px; border-top: 1px solid var(--border-light); position: relative; margin-top: auto;">
+      <div (click)="toggleDropdown()" style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 8px; border-radius: 8px; transition: background-color 0.2s;" class="profile-card-hover">
+        <div style="width: 36px; height: 36px; border-radius: 50%; background-color: var(--primary); display: flex; justify-content: center; align-items: center; font-weight: bold; color: #ffffff; font-size: 14px;">
+          {{ authService.currentUser().initials }}
+        </div>
+        <div style="display: flex; flex-direction: column; flex-grow: 1;">
+          <span style="font-size: 13px; font-weight: 600; color: var(--text-primary);">{{ authService.currentUser().name }}</span>
+          <span style="font-size: 11px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">{{ authService.currentUser().roleName }}</span>
+        </div>
+        <span class="material-symbols-outlined" style="color: var(--text-muted); font-size: 18px;">unfold_more</span>
+      </div>
+
+      <!-- Switcher Dropdown Panel -->
+      <div *ngIf="showDropdown" style="position: absolute; bottom: 80px; left: 16px; right: 16px; background-color: #1e293b; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5); z-index: 100; padding: 6px; display: flex; flex-direction: column; gap: 4px;">
+        <div style="padding: 8px 12px; font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 4px;">
+          Switch Identity / Role
+        </div>
+        <div *ngFor="let u of authService.users" (click)="selectUser(u)" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; cursor: pointer; transition: background-color 0.15s;" class="dropdown-item-hover">
+          <div style="width: 28px; height: 28px; border-radius: 50%; background-color: rgba(255,255,255,0.05); display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 11px; color: var(--text-secondary);">
+            {{ u.initials }}
+          </div>
+          <div style="display: flex; flex-direction: column;">
+            <span style="font-size: 12px; font-weight: 600; color: var(--text-primary);">{{ u.name }}</span>
+            <span style="font-size: 10px; color: var(--text-muted);">{{ u.roleName }}</span>
+          </div>
+          <span class="material-symbols-outlined" *ngIf="authService.currentUser().role === u.role" style="margin-left: auto; color: var(--primary); font-size: 16px;">check_circle</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Side Workspace -->
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>
