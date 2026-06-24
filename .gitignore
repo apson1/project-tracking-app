@@ -1,0 +1,6 @@
+# Build output and tooling directories for backend
+backend/bin/
+backend/obj/
+
+# Root scratch/temp files
+repository_structure.txt
